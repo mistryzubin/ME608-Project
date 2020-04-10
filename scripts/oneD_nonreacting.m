@@ -54,9 +54,8 @@ diff = 1;
 t = 0;
 while (diff > 1e-8)
     % Guess a value of dt based on intial velocity
-    dt = min((CFL*dx/max(u)),1e-8);
+    dt = min((CFL*dx/max(u)),100);
     t = t + dt;
-    disp(t);
     dFdx = zeros(2,n_grid);
     
     dFdx(1,2:end-1) = (rho(2:end-1).*u(2:end-1).*A(0.5*(x(2:end-1)+x(3:end))) - ...
@@ -82,12 +81,18 @@ while (diff > 1e-8)
     Unew = Uold - dt*(dFdx + H);
     rho = Unew(1,:)./A(x);
     u = Unew(2,:)./(rho.*A(x));
-    p = rho.*T.*R;
+    temp = rho.*T.*R;
    
+    diff = norm(p-temp);
     
+    disp(diff);
+    
+    p = temp;
+    M = u./sqrt(gamma*R*T);
     
 %     plot(p/(rho_inf*u_inf*u_inf));
-%     pause(0.000001);
+    plot(M);
+    pause(0.000001);
 end
 
 
