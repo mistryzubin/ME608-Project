@@ -20,22 +20,17 @@ cv_O2               = cp_O2*gamma;
 cv_O               = cp_O*gamma;
 L                   = 0.213;            % m
 n_grid              = 129;              
-CFL                 = 0.1;
+CFL                 = 0.9;
  
 %% Pre processing
 % Grid
 x = linspace(0,L,n_grid+1);
-Amax = 1;
-Amin = 0.1;
-Atemp = Amin + (Amax - Amin)*(1 - sin(pi*x/L));
-dAdx = Atemp(2:end) - Atemp(1:end-1);
 x = (x(2:end)+x(1:end-1))/2;
 dx = x(2) - x(1);
 % Area distribution
 Amax = 1;
 Amin = 0.1;
-A = Amin + (Amax - Amin)*(1 - sin(pi*x/L));
-dAdx = dAdx/dx;
+A = @(x) Amin + (Amax - Amin)*(1 - sin(pi*x/L));
 % % Figure 6-1
 % figure();
 % hold on;
@@ -61,36 +56,38 @@ while (diff > 1e-8)
     % Guess a value of dt based on intial velocity
     dt = min((CFL*dx/max(u)),1e-8);
     t = t + dt;
-%     disp(dt);
-    % F
-    F = zeros(2,n_grid);
-    F(1,:) = rho.*u.*A;
-    F(2,:) = rho.*u.*u.*A + p.*A;
-    % dFdx 
+    disp(t);
     dFdx = zeros(2,n_grid);
-    dFdx(:,2:end-1) = (F(:,3:end)-F(:,1:end-2))/(2*dx);
-    dFdx(1,1) = (0.5*(rho(2)*u(2)*A(2)+rho(1)*u(1)*A(1)) - rho_inf*u_inf*(Amax))/dx;
-    dFdx(1,end) = (rho_inf*u_inf*(Amax) - 0.5*(rho(end-1)*u(end-1)*A(end-1)+rho(end)*u(end)*A(end)))/dx;
-    dFdx(2,1) = (0.5*(rho(2)*u(2)*u(2)*A(2)+p(2)*A(2)+rho(1)*u(1)*u(1)*A(1)+p(1)*A(1)) - (rho_inf*u_inf*u_inf*(Amax)+p_inf*Amax))/dx;
-    dFdx(2,end) = (rho_inf*u_inf*u_inf*Amax+p_inf*(Amax) - 0.5*(rho(end-1)*u(end-1)*u(end-1)*A(end-1)+p(end-1)*A(end-1)+rho(end)*u(end)*u(end)*A(end)+p(end)*A(end)))/dx;
     
-    % H
+    dFdx(1,2:end-1) = (rho(2:end-1).*u(2:end-1).*A(0.5*(x(2:end-1)+x(3:end))) - ...
+                      rho(1:end-2).*u(1:end-2).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
+    dFdx(1,1) = (rho(1)*u(1)*A((x(1)+x(2))*0.5) - rho_inf*u_inf*A(0))/dx;
+    dFdx(1,end) = (rho_inf*u_inf*A(L) - rho(end-1)*u(end-1)*A((x(end)+x(end-1))*0.5))/dx;
+    
+    dFdx(2,2:end-1) = ((rho(2:end-1).*u(2:end-1).*u(2:end-1) + p(2:end-1)).*A(0.5*(x(2:end-1)+x(3:end))) - ...
+                      (rho(1:end-2).*u(1:end-2).*u(1:end-2) + p(1:end-2)).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
+    dFdx(2,1) = ((rho(1)*u(1)*u(1) + p(1))*A(0.5*(x(1)+x(2))) - (rho_inf*u_inf*u_inf + p_inf)*A(0))/dx;
+    dFdx(2,end) = ((rho_inf*u_inf*u_inf + p_inf)*A(L) - (rho(end-1)*u(end-1)*u(end-1) + p(end-1))*A(0.5*(x(end)+x(end-1))))/dx;
+    
+    
     H = zeros(2,n_grid);
-    H(2,:) = -p.*dAdx;
+    H(2,2:end-1) = -p(2:end-1).*((A(0.5*(x(2:end-1)+x(3:end)))-A(0.5*(x(2:end-1)+x(1:end-2))))/dx);
+    H(2,1) = -p(1)*((A(x(1))-A(0))/(dx/2));
+    H(2,end) = -p(end)*((A(L)-A(x(end)))/(dx/2));
     
     Uold = zeros(2,n_grid);
-    Uold(1,:) = rho.*A;
-    Uold(2,:) = rho.*u.*A;
+    Uold(1,:) = rho.*A(x);
+    Uold(2,:) = rho.*u.*A(x);
     
     Unew = Uold - dt*(dFdx + H);
-    rho = Unew(1,:)./A;
-    u = Unew(2,:)./(rho.*A);
+    rho = Unew(1,:)./A(x);
+    u = Unew(2,:)./(rho.*A(x));
     p = rho.*T.*R;
    
     
     
-    plot(p/(rho_inf*u_inf*u_inf));
-    pause(0.000001);
+%     plot(p/(rho_inf*u_inf*u_inf));
+%     pause(0.000001);
 end
 
 
