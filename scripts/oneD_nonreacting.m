@@ -9,7 +9,7 @@ clc;
 %% Properties - Table 6-1
 p_inf               = 6.6e4;            % Pa
 T_inf               = 1200;             % K
-M_inf               = 0.1;                % Mach number
+M_inf               = 6;              % Mach number
 gamma               = 1.4;
 R                   = 8.314;
 u_inf               = M_inf*sqrt(gamma*R*T_inf);
@@ -25,13 +25,17 @@ CFL                 = 0.1;
 %% Pre processing
 % Grid
 x = linspace(0,L,n_grid+1);
+Amax = 1;
+Amin = 0.1;
+Atemp = Amin + (Amax - Amin)*(1 - sin(pi*x/L));
+dAdx = Atemp(2:end) - Atemp(1:end-1);
 x = (x(2:end)+x(1:end-1))/2;
 dx = x(2) - x(1);
 % Area distribution
 Amax = 1;
-Amin = 0.01;
+Amin = 0.1;
 A = Amin + (Amax - Amin)*(1 - sin(pi*x/L));
-
+dAdx = dAdx/dx;
 % % Figure 6-1
 % figure();
 % hold on;
@@ -44,7 +48,7 @@ A = Amin + (Amax - Amin)*(1 - sin(pi*x/L));
 % set(gca,'FontSize',20);
 
 
-% Define the initial conditions
+% Define the initial conditions - non-dimensional
 u = u_inf*ones(1,n_grid);
 T = T_inf*ones(1,n_grid);
 p = p_inf*ones(1,n_grid);
@@ -53,76 +57,40 @@ rho = rho_inf*ones(1,n_grid);
 % Lets do this explicitly till steady state
 diff = 1;
 t = 0;
-cp = cp_O2;
-cv = cv_O2;
 while (diff > 1e-8)
     % Guess a value of dt based on intial velocity
-    dt = CFL*dx/max(u);
-    % Update pressures with equation of state
-    p = R*rho.*T;
+    dt = min((CFL*dx/max(u)),1e-8);
     t = t + dt;
-    % Both the F and H in this case are treated explicitly, so lets
-    % construct them first
-    % dFdx vector
-    dFdx = zeros(3,n_grid);
+%     disp(dt);
+    % F
+    F = zeros(2,n_grid);
+    F(1,:) = rho.*u.*A;
+    F(2,:) = rho.*u.*u.*A + p.*A;
+    % dFdx 
+    dFdx = zeros(2,n_grid);
+    dFdx(:,2:end-1) = (F(:,3:end)-F(:,1:end-2))/(2*dx);
+    dFdx(1,1) = (0.5*(rho(2)*u(2)*A(2)+rho(1)*u(1)*A(1)) - rho_inf*u_inf*(Amax))/dx;
+    dFdx(1,end) = (rho_inf*u_inf*(Amax) - 0.5*(rho(end-1)*u(end-1)*A(end-1)+rho(end)*u(end)*A(end)))/dx;
+    dFdx(2,1) = (0.5*(rho(2)*u(2)*u(2)*A(2)+p(2)*A(2)+rho(1)*u(1)*u(1)*A(1)+p(1)*A(1)) - (rho_inf*u_inf*u_inf*(Amax)+p_inf*Amax))/dx;
+    dFdx(2,end) = (rho_inf*u_inf*u_inf*Amax+p_inf*(Amax) - 0.5*(rho(end-1)*u(end-1)*u(end-1)*A(end-1)+p(end-1)*A(end-1)+rho(end)*u(end)*u(end)*A(end)+p(end)*A(end)))/dx;
     
-    % Upwinding convection terms
-    % Mass conservation - central nodes
-    dFdx(1,2:end-1) = (((rho(2:end-1).*u(2:end-1)).*((A(2:end-1)+A(3:end))/2)) - ...
-                   ((rho(1:end-2).*u(1:end-2)).*((A(2:end-1)+A(1:end-2))/2)))/dx; 
-    % Mass conservation - right boundary
-    dFdx(1,end) = (rho(end)*u(end)*interp1(x,A,L) - rho(end-1)*u(end-1)*((A(end)+A(end-1))/2))/(dx/2);
-    % Mass conservation - left boundary
-    dFdx(1,1) = (rho(1)*u(1)*((A(1)+A(2))/2) - rho_inf*u_inf*interp1(x,A,0))/(dx/2);
+    % H
+    H = zeros(2,n_grid);
+    H(2,:) = -p.*dAdx;
     
-    % Momentum conservation - central nodes
-    dFdx(2,2:end-1) = (((rho(2:end-1).*u(2:end-1).*u(2:end-1)).*((A(2:end-1)+A(3:end))/2)) - ...
-                   ((rho(1:end-2).*u(1:end-2).*u(1:end-2)).*((A(2:end-1)+A(1:end-2))/2)) + ...
-                   ((p(3:end)+p(2:end-1))/2).*(A(2:end-1)+A(3:end))/2 - ((p(2:end-1)+p(1:end-2))/2).*(A(2:end-1)+A(1:end-2))/2)/dx;
-    
-    % Momentum conservation - right boundary
-    dFdx(2,end) = (rho(end)*u(end)*u(end)*interp1(x,A,L) - rho(end-1)*u(end-1)*u(end-1)*((A(end)+A(end-1))/2) + ...
-               p_inf*interp1(x,A,L) - ((p(end-1)+p(end))/2)*((A(end)+A(end-1))/2))/(dx/2);
-           
-    % Momentum conservation - left boundary
-    dFdx(2,1) = (rho(1)*u(1)*u(1)*((A(1)+A(2))/2) - rho_inf*u_inf*u_inf*interp1(x,A,0) + ...
-             ((p(2)+p(1))/2)*((A(2)+A(1))/2) - p_inf*interp1(x,A,0))/(dx/2);
-         
-    % Energy conservation - central nodes
-    dFdx(3,2:end-1) = (cp*rho(2:end-1).*T(2:end-1).*u(2:end-1).*((A(2:end-1)+A(3:end))/2) - ...
-                    cp*rho(1:end-2).*T(1:end-2).*u(1:end-2).*((A(2:end-1)+A(1:end-2))/2))/dx;
-    
-    % Energy conservation - right boundary
-    dFdx(3,end) = (cp*rho(end)*u(end)*T(end)*interp1(x,A,L) - cp*rho(end-1)*u(end-1)*T(end-1)*((A(end)+A(end-1))/2))/(dx/2);
-    
-    % Energy conservation - left boundary
-    dFdx(3,1) = (cp*rho(1)*u(1)*T(1)*((A(1)+A(2))/2) - cp*rho_inf*u_inf*T_inf*interp1(x,A,0))/(dx/2);
-    
-    % H vector
-    H = zeros(3,n_grid);
-    % Momentum source terms - central nodes
-    H(2,2:end-1) = -p(2:end-1).*(A(3:end)-A(1:end-2))/dx;
-    % Momentum source terms - right boundary
-    H(2,end) = -p(end)*(A(end)-A(end-1))/dx;
-    % Momentum source terms - left boundary
-    H(2,end) = -p(1)*(A(2)-A(1))/dx;
-    
-    % Construct the U vector old
-    Uold = zeros(3,n_grid);
+    Uold = zeros(2,n_grid);
     Uold(1,:) = rho.*A;
     Uold(2,:) = rho.*u.*A;
-    Uold(3,:) = rho.*A.*(cv*T + 0.5*u.*u);
     
-    % Explicit integral
-    Unew = (-dFdx - H)*dt + Uold;
-    
-    % Calculate back the quantities of interest
+    Unew = Uold - dt*(dFdx + H);
     rho = Unew(1,:)./A;
-    u = Unew(2,:)./(A.*rho);
-    T = (Unew(3,:)./(A.*rho)) - 0.5.*u.*u;
+    u = Unew(2,:)./(rho.*A);
+    p = rho.*T.*R;
+   
     
-    plot(p);
-%     pause(0.1);
+    
+    plot(p/(rho_inf*u_inf*u_inf));
+    pause(0.000001);
 end
 
 
