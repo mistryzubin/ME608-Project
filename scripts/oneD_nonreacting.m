@@ -11,12 +11,12 @@ T_inf               = 1200;             % K
 M_inf               = 6;              % Mach number
 gamma               = 1.4;
 R                   = 8.314;
-u_inf               = M_inf*sqrt(gamma*R*T_inf);
-rho_inf             = p_inf/(R*T_inf);
+u_inf               = M_inf*sqrt(gamma*(R/0.032)*T_inf);
+rho_inf             = p_inf/((R/0.032)*T_inf);
 cp_O2               = 1000;             % J/kgK
 cp_O                = 718;              % J/kgK
 cv_O2               = cp_O2/gamma;
-cv_O               = cp_O/gamma;
+cv_O                = cp_O/gamma;
 L                   = 0.213;            % m
 n_grid              = 129;              
 CFL                 = 0.9;
@@ -28,7 +28,7 @@ x = (x(2:end)+x(1:end-1))/2;
 dx = x(2) - x(1);
 % Area distribution
 Amax = 1;
-Amin = 0.03;
+Amin = 0.0325;
 %A = @(x) Amin + (Amax - Amin)*(1 - sin(pi*x/L));
 A = @(x) (4*(Amax-Amin)*(x/L).*(x/L) - 4*(Amax-Amin)*(x/L) + Amax);
 % % Figure 6-1
@@ -48,6 +48,8 @@ u = u_inf*ones(1,n_grid);
 T = T_inf*ones(1,n_grid);
 p = p_inf*ones(1,n_grid);
 rho = rho_inf*ones(1,n_grid);
+YO2 = ones(1,n_grid);
+YO = zeros(1,n_grid);
 
 % Lets do this explicitly till steady state
 diff = 1;
@@ -78,12 +80,24 @@ while (diff > 1e-8)
                       p(1:end-2).*u(1:end-2).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
     dFdx(3,1) = dFdx(3,1) + (p(1)*u(1)*A(0.5*(x(1)+x(2))) - p_inf*u_inf*A(0))/dx;
     dFdx(3,end) = dFdx(3,end) + (p(end)*u(end)*A(L) - p(end-1)*u(end-1)*A(0.5*(x(end)+x(end-1))))/dx;
+    
+%     dFdx(4,2:end-1) = (rho(2:end-1).*u(2:end-1).*A(0.5*(x(2:end-1)+x(3:end))).*YO2(2:end-1) - ...
+%                       rho(1:end-2).*u(1:end-2).*A(0.5*(x(2:end-1)+x(1:end-2))).*YO2(1:end-2))/dx;
+%     dFdx(4,1) = (rho(1)*u(1)*A(0.5*(x(2)+x(1)))*YO2(1) - tho_inf*u_inf*A(0)*1)/dx;
+%     dFdx(4,end) = (rho(end)*u(end)*A(L)*YO2(end) - rho(end-1)*u(end-1)*A(0.5*(x(end)+x(end-1)))*YO2(end-1))/dx;
+%     
+%     dFdx(5,2:end-1) = (rho(2:end-1).*u(2:end-1).*A(0.5*(x(2:end-1)+x(3:end))).*YO(2:end-1) - ...
+%                       rho(1:end-2).*u(1:end-2).*A(0.5*(x(2:end-1)+x(1:end-2))).*YO(1:end-2))/dx;
+%     dFdx(5,1) = (rho(1)*u(1)*A(0.5*(x(2)+x(1)))*YO(1) - tho_inf*u_inf*A(0)*0)/dx;
+%     dFdx(5,end) = (rho(end)*u(end)*A(L)*YO(end) - rho(end-1)*u(end-1)*A(0.5*(x(end)+x(end-1)))*YO(end-1))/dx;
 
     
     H = zeros(3,n_grid);
     H(2,2:end-1) = -p(2:end-1).*((A(0.5*(x(2:end-1)+x(3:end)))-A(0.5*(x(2:end-1)+x(1:end-2))))/dx);
     H(2,1) = -p(1)*((A(x(1))-A(0))/(dx/2));
     H(2,end) = -p(end)*((A(L)-A(x(end)))/(dx/2));
+    
+    
     
     Uold = zeros(3,n_grid);
     Uold(1,:) = rho.*A(x);
@@ -96,17 +110,16 @@ while (diff > 1e-8)
     T = (Unew(3,:)./(rho.*A(x)) - 0.5*u.*u)/cv_O2;
     T = T + T_inf;
     
-    temp = ((rho).*(T).*R);
+    temp = ((rho).*(T).*(R/0.032));
    
     diff = norm(p-temp);
     
     disp(diff);
     
     p = temp;
-    M = u./sqrt(gamma*R*T);
+    M = u./sqrt(gamma*(R/0.032)*T);
     
-%     plot(p);
-    plot(x/L,M);
+    plot(x/L,p/(rho_inf*u_inf*u_inf));
     pause(0.000001);
 end
 
