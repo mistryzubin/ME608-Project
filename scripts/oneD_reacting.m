@@ -17,8 +17,7 @@ HfO2                = 0;
 HfO                 = 1e5;
 L                   = 0.213;
 n_grid              = 129;
-CFL                 = 0.9;
-
+CFL                 = 1e-8;
 % Species source
 A                   = 2e12;
 B                   = -1;
@@ -45,7 +44,7 @@ Amin = 0.0325;
 A = @(x) (4*(Amax-Amin)*(x/L).*(x/L) - 4*(Amax-Amin)*(x/L) + Amax);
 
 % Weighted average of cv
-cv_ = @(yO2,yO) (yO2*cvO2 + yO*cvO);
+cv_ = @(yO2,yO) (cvO2*yO2 + cvO*yO);
 
 % Define the initial conditions - non-dimensional
 u = u_inf*ones(1,n_grid);
@@ -64,9 +63,9 @@ while (diff > 1e-5)
     t = t + dt;
     T = T - T_inf;
     % Array of cvs
-    cv = cv_(YO2,YO);
+    cv = ones(1,length(YO)).*cv_(YO2,YO);
     
-    dFdx = zeros(5,n_grid);
+    dFdx = zeros(4,n_grid);
     
     dFdx(1,2:end-1) = (rho(2:end-1).*u(2:end-1).*A(0.5*(x(2:end-1)+x(3:end))) - ...
                       rho(1:end-2).*u(1:end-2).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
@@ -93,21 +92,21 @@ while (diff > 1e-5)
     dFdx(3,1) = dFdx(3,1) + (p(1)*u(1)*A(0.5*(x(1)+x(2))) - p_inf*u_inf*A(0))/dx;
     dFdx(3,end) = dFdx(3,end) + (p(end)*u(end)*A(L) - p(end-1)*u(end-1)*A(0.5*(x(end)+x(end-1))))/dx;
     
-    dFdx(4,2:end-1) = ((rho(2:end-1).*u(2:end-1).*YO2(2:end-1).*u(2:end-1) + p(2:end-1)).*A(0.5*(x(2:end-1)+x(3:end))) - ...
-                      (rho(1:end-2).*u(1:end-2).*YO2(1:end-2).*u(1:end-2) + p(1:end-2)).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
+    dFdx(4,2:end-1) = ((rho(2:end-1).*u(2:end-1).*YO2(2:end-1)).*A(0.5*(x(2:end-1)+x(3:end))) - ...
+                      (rho(1:end-2).*u(1:end-2).*YO2(1:end-2)).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
     dFdx(4,1) = (rho(1)*u(1)*YO2(1)*A((x(1)+x(2))*0.5) - rho_inf*u_inf*1*A(0))/dx;
     dFdx(4,end) = (rho(end)*u(end)*YO2(end)*A(L) - rho(end-1)*u(end-1)*YO2(end-1)*A((x(end)+x(end-1))*0.5))/dx;
     
-    dFdx(5,2:end-1) = ((rho(2:end-1).*u(2:end-1).*YO(2:end-1).*u(2:end-1) + p(2:end-1)).*A(0.5*(x(2:end-1)+x(3:end))) - ...
-                      (rho(1:end-2).*u(1:end-2).*YO(1:end-2).*u(1:end-2) + p(1:end-2)).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
-    dFdx(5,1) = (rho(1)*u(1)*YO2(1)*A((x(1)+x(2))*0.5) - rho_inf*u_inf*0*A(0))/dx;
+    dFdx(5,2:end-1) = ((rho(2:end-1).*u(2:end-1).*YO(2:end-1)).*A(0.5*(x(2:end-1)+x(3:end))) - ...
+                      (rho(1:end-2).*u(1:end-2).*YO(1:end-2)).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
+    dFdx(5,1) = (rho(1)*u(1)*YO(1)*A((x(1)+x(2))*0.5) - rho_inf*u_inf*0*A(0))/dx;
     dFdx(5,end) = (rho(end)*u(end)*YO(end)*A(L) - rho(end-1)*u(end-1)*YO(end-1)*A((x(end)+x(end-1))*0.5))/dx;
     
-    H = zeros(5,n_grid);
-    H(4,:) = w(T+T_inf);
-    H(5,:) = -w(T+T_inf);
+    H = zeros(4,n_grid);
+    H(4,:) = w(T+T_inf).*A(x)*dx;
+    H(5,:) = -w(T+T_inf).*A(x)*dx;
     
-    Uold = zeros(5,n_grid);
+    Uold = zeros(4,n_grid);
     Uold(1,:) = rho.*A(x);
     Uold(2,:) = rho.*u.*A(x);
     Uold(3,:) = rho.*A(x).*(cv_(YO2,YO).*T + 0.5*u.*u + HfO2*YO2 + HfO*YO);
@@ -120,7 +119,14 @@ while (diff > 1e-5)
     rho = Unew(1,:)./A(x);
     u = Unew(2,:)./(rho.*A(x));
     YO2 = Unew(4,:)./(rho.*A(x));
+%     YO = 1 - YO2;
     YO = Unew(5,:)./(rho.*A(x));
+    
+%     YO2(YO2>1) = 1;
+%     YO2(YO2<0) = 0;
+%     YO(YO>1) = 1;
+%     YO(YO<0) = 0;
+%     YO = 1 - YO2;
     T = (Unew(3,:)./(rho.*A(x)) - 0.5*u.*u - HfO2*YO2 - HfO*YO)./cv_(YO2,YO);
     T = T + T_inf;
     
@@ -130,13 +136,9 @@ while (diff > 1e-5)
     
     p = temp;
     M = u./sqrt(8.314*T.*(gammaO2*YO2/0.032 + gammaO*YO/0.016));
-    plot(x/L,M);
+   
+%     plot(x/L,p/(rho_inf*u_inf*u_inf));
+    plot(x/L,YO2);
     pause(0.000001);
 end
-
-
-
-
-
-
 

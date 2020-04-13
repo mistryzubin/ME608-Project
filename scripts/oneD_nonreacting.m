@@ -113,7 +113,7 @@ while (diff > 1e-5)
     p = temp;
     M = u./sqrt(gamma*(R/0.032)*T);
     
-    plot(x/L,M);
+    plot(x/L,p/(rho_inf*u_inf*u_inf));
     pause(0.000001);
 end
 
