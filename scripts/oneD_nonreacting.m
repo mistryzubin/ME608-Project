@@ -102,8 +102,8 @@ while (diff > 1e-5)
     p = temp;
     M = u./sqrt(gamma*(R/0.032)*T);
     
-%     plot(x/L,M);
-%     pause(0.000001);
+    plot(x/L,M);
+    pause(0.1);
 end
 
 load('../../machnumber.mat');
