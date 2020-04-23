@@ -108,26 +108,7 @@ while (diff > 1e-5)
     
     
     % Pure explicit
-%     Unew = Uold - dt*(dFdx + H);
-%     rho = Unew(1,:)./A(x);
-%     u = Unew(2,:)./(rho.*A(x));
-%     YO2 = Unew(4,:)./(rho.*A(x));
-%     YO = 1 - YO2;
-%     
-%     T = (Unew(3,:)./(rho.*A(x)) - 0.5*u.*u - HfO2*YO2 - HfO*YO)./cv_(YO2,YO);
-%     T = T + T_inf;
-    
-    % Point implicit
-    Unew = 0*Uold;
-    % Explicit for first three
-    Unew(1,:) = Uold(1,:) - dt*(dFdx(1,:) + H(1,:));
-    Unew(2,:) = Uold(2,:) - dt*(dFdx(2,:) + H(2,:));
-    Unew(3,:) = Uold(3,:) - dt*(dFdx(3,:) + H(3,:));
-    % Implicit for last
-    alpha = -dt*(k.*YO2)./rho;
-    beta = 1 + dt*k./rho;
-    Unew(4,:) = ((-dt*(dFdx(4,:) + H(4,:)) - alpha.*(Unew(1,:)-Uold(1,:)))./beta) + Uold(4,:);
-    
+    Unew = Uold - dt*(dFdx + H);
     rho = Unew(1,:)./A(x);
     u = Unew(2,:)./(rho.*A(x));
     YO2 = Unew(4,:)./(rho.*A(x));
@@ -135,6 +116,10 @@ while (diff > 1e-5)
     
     T = (Unew(3,:)./(rho.*A(x)) - 0.5*u.*u - HfO2*YO2 - HfO*YO)./cv_(YO2,YO);
     T = T + T_inf;
+    
+    % Point implicit
+    Unew = 0*Uold;
+    % Explicit for first thr
     
     temp = ((rho).*(T).*(RO2*YO2 + RO*YO));
     diff = norm(p-temp);
