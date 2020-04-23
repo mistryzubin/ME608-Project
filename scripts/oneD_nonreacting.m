@@ -27,7 +27,7 @@ x = (x(2:end)+x(1:end-1))/2;
 dx = x(2) - x(1);
 % Area distribution
 Amax = 1;
-Amin = 0.0325;
+Amin = 0.03;
 %A = @(x) Amin + (Amax - Amin)*(1 - sin(pi*x/L));
 A = @(x) (4*(Amax-Amin)*(x/L).*(x/L) - 4*(Amax-Amin)*(x/L) + Amax);
 % % Figure 6-1
@@ -42,7 +42,7 @@ A = @(x) (4*(Amax-Amin)*(x/L).*(x/L) - 4*(Amax-Amin)*(x/L) + Amax);
 % set(gca,'FontSize',20);
 
 
-% Define the initial conditions - non-dimensional
+% Define the initial conditions
 u = u_inf*ones(1,n_grid);
 T = T_inf*ones(1,n_grid);
 p = p_inf*ones(1,n_grid);
@@ -68,25 +68,16 @@ while (diff > 1e-5)
     dFdx(2,1) = ((rho(1)*u(1)*u(1) + p(1))*A(0.5*(x(1)+x(2))) - (rho_inf*u_inf*u_inf + p_inf)*A(0))/dx;
     dFdx(2,end) = ((rho(end)*u(end)*u(end) + p(end))*A(L) - (rho(end-1)*u(end-1)*u(end-1) + p(end-1))*A(0.5*(x(end)+x(end-1))))/dx;
     
-    dFdx(3,2:end-1) = (rho(2:end-1).*u(2:end-1).*(cv_O2*T(2:end-1)+0.5*u(2:end-1).*u(2:end-1)).*A(0.5*(x(2:end-1)+x(3:end))) - ...
-                      rho(1:end-2).*u(1:end-2).*(cv_O2*T(1:end-2)+0.5*u(1:end-2).*u(1:end-2)).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
-    dFdx(3,1) = (rho(1)*u(1)*(cv_O2*T(1)+0.5*u(1)*u(1))*A(0.5*(x(1)+x(2))) - rho_inf*u_inf*(cv_O2*(T_inf-T_inf)+0.5*u_inf*u_inf)*A(0))/dx;
-    dFdx(3,end) = (rho(end)*u(end)*(cv_O2*T(end)+0.5*u(end)*u(end))*A(L) - rho(end-1)*u(end-1)*(cv_O2*T(end-1)+0.5*u(end-1)*u(end-1))*A(0.5*(x(end)+x(end-1))))/dx;
-    
-    dFdx(3,2:end-1) = dFdx(3,2:end-1) + (p(2:end-1).*u(2:end-1).*A(0.5*(x(2:end-1)+x(3:end)))-...
-                      p(1:end-2).*u(1:end-2).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
-    dFdx(3,1) = dFdx(3,1) + (p(1)*u(1)*A(0.5*(x(1)+x(2))) - p_inf*u_inf*A(0))/dx;
-    dFdx(3,end) = dFdx(3,end) + (p(end)*u(end)*A(L) - p(end-1)*u(end-1)*A(0.5*(x(end)+x(end-1))))/dx;
-    
-    % Put the momentum source in dFdx
-    dFdx(2,2:end-1) = dFdx(2,2:end-1)-p(2:end-1).*(A(0.5*(x(2:end-1)+x(3:end)))-A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
-    dFdx(2,1) = dFdx(2,1)-p(1)*(A(0.5*(x(2)+x(1)))-A(0))/dx;
-    dFdx(2,end) = dFdx(2,end)-p(end)*(A(L)-A(0.5*(x(end)+x(end-1))))/dx;
+    dFdx(3,2:end-1) = (rho(2:end-1).*u(2:end-1).*(cp_O2*T(2:end-1)+0.5*u(2:end-1).*u(2:end-1)).*A(0.5*(x(2:end-1)+x(3:end))) - ...
+                      rho(1:end-2).*u(1:end-2).*(cp_O2*T(1:end-2)+0.5*u(1:end-2).*u(1:end-2)).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
+    dFdx(3,1) = (rho(1)*u(1)*(cp_O2*T(1)+0.5*u(1)*u(1))*A(0.5*(x(1)+x(2))) - rho_inf*u_inf*(cp_O2*(T_inf-T_inf)+0.5*u_inf*u_inf)*A(0))/dx;
+    dFdx(3,end) = (rho(end)*u(end)*(cp_O2*T(end)+0.5*u(end)*u(end))*A(L) - rho(end-1)*u(end-1)*(cp_O2*T(end-1)+0.5*u(end-1)*u(end-1))*A(0.5*(x(end)+x(end-1))))/dx;
+
     
     H = zeros(3,n_grid);
-%     H(2,2:end-1) = -p(2:end-1).*((A(0.5*(x(2:end-1)+x(3:end)))-A(0.5*(x(2:end-1)+x(1:end-2))))/dx);
-%     H(2,1) = -p(1)*((A(x(1))-A(0))/(dx/2));
-%     H(2,end) = -p(end)*((A(L)-A(x(end)))/(dx/2));
+    H(2,2:end-1) = -p(2:end-1).*((A(0.5*(x(2:end-1)+x(3:end)))-A(0.5*(x(2:end-1)+x(1:end-2))))/dx);
+    H(2,1) = -p(1)*((A(x(1))-A(0))/(dx/2));
+    H(2,end) = -p(end)*((A(L)-A(x(end)))/(dx/2));
     
 
     Uold = zeros(3,n_grid);
@@ -102,10 +93,8 @@ while (diff > 1e-5)
     T = (Unew(3,:)./(rho.*A(x)) - 0.5*u.*u)/cv_O2;
     T = T + T_inf;
     
-    
-    
     temp = ((rho).*(T).*(R/0.032));
-   
+
     diff = norm(p-temp);
     
     disp(diff);
@@ -113,14 +102,37 @@ while (diff > 1e-5)
     p = temp;
     M = u./sqrt(gamma*(R/0.032)*T);
     
-    plot(x/L,p/(rho_inf*u_inf*u_inf));
-    pause(0.000001);
+%     plot(x/L,M);
+%     pause(0.000001);
 end
 
+load('../../machnumber.mat');
+figure();
+hold on;
+grid on;
+grid minor;
+xlabel('x/L');
+xlim([0 1]);
+ylabel('M');
+plot(x/L,M,'Linewidth',2,'Displayname','Current work');
+scatter(machnumber(:,1),machnumber(:,2),'Displayname','Literature');
+legend('show');
+set(gca,'FontSize',20);
+set(gcf,'color','w');
 
-
-
-
+load('../../temperature.mat');
+figure();
+hold on;
+grid on;
+grid minor;
+xlabel('x/L');
+xlim([0 1]);
+ylabel('T/T_{\infty}');
+plot(x/L,T/T_inf,'Linewidth',2,'Displayname','Current work');
+scatter(temperature(:,1),temperature(:,2),'Displayname','Literature');
+legend('show');
+set(gca,'FontSize',20);
+set(gcf,'color','w');
 
 
 
