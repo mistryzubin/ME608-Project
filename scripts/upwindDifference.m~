@@ -1,0 +1,13 @@
+function ddx = upwindDifference(s,x,dx,s_w,s_e)
+
+Amax = 1;
+Amin = 0.03;
+%A = @(x) Amin + (Amax - Amin)*(1 - sin(pi*x/L));
+A = @(x) (4*(Amax-Amin)*(x/L).*(x/L) - 4*(Amax-Amin)*(x/L) + Amax);
+
+ddx = zeros(1,length(s));
+
+% Central nodes
+ddx(2:end-1) = (s(2:end-1).*A(0.5*(x(2:end-1)+x(3:end))) - s(1:end-2).*)/dx;
+ddx(1) = (s(1)*((A(2)+A(1))/2) - s_w*A_w)/dx;
+ddx(end) = (s(end)*A_e - s(end-1)*((A(end)+A(end-1))/2))/dx;
