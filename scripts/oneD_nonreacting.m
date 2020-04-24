@@ -103,7 +103,7 @@ while (diff > 1e-5)
 %     pause(0.1);
 end
 
-load('../../machnumber.mat');
+% load('../../machnumber.mat');
 figure();
 hold on;
 grid on;
@@ -112,12 +112,12 @@ xlabel('x/L');
 xlim([0 1]);
 ylabel('M');
 plot(x/L,M,'Linewidth',2,'Displayname','Current work');
-scatter(machnumber(:,1),machnumber(:,2),'Displayname','Literature');
+% scatter(machnumber(:,1),machnumber(:,2),'Displayname','Literature');
 legend('show');
 set(gca,'FontSize',20);
 set(gcf,'color','w');
 
-load('../../temperature.mat');
+% load('../../temperature.mat');
 figure();
 hold on;
 grid on;
@@ -126,7 +126,7 @@ xlabel('x/L');
 xlim([0 1]);
 ylabel('T/T_{\infty}');
 plot(x/L,T/T_inf,'Linewidth',2,'Displayname','Current work');
-scatter(temperature(:,1),temperature(:,2),'Displayname','Literature');
+% scatter(temperature(:,1),temperature(:,2),'Displayname','Literature');
 legend('show');
 set(gca,'FontSize',20);
 set(gcf,'color','w');
