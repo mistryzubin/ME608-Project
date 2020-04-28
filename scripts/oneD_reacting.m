@@ -14,14 +14,14 @@ HfO                 = 1e5;
 % HfO                 = 0;
 L                   = 0.213;
 n_grid              = 129;
-CFL                 = 0.9;
+CFL                 = 0.01;
 % Species source
 A                   = 2e12;
 B                   = -1;
 C                   = 80;
 
 k_                  = @(T) A*T.^(-B).*exp(-C./T);
-% k_                  = @(T) 0;
+% k_                  = @(T) (1e4)*T./T;
 
 wO2                 = 0.032;
 wO                  = 0.016;
@@ -75,13 +75,16 @@ t = 0;
 
 while (diff > 1e-5)
     % Guess a value of dt based on intial velocity
-    dt = min((CFL*dx/max(u)),100);
-    t = t + dt;
+    dt = min((CFL*dx/max(sqrt(T.*(gammaO2*RO2*YO2 + RO*gammaO*YO)))),100);
     T = T - T_inf;
     % Array of cvs
     cv = ones(1,length(YO)).*cv_(YO2,YO);
     cp = ones(1,length(YO)).*cp_(YO2,YO);
     k = k_(T+T_inf);
+    
+%     dt = min(abs(rho./k));
+%     disp(dt);
+    t = t + dt;
     
     dFdx = zeros(4,n_grid);
     
@@ -124,10 +127,31 @@ while (diff > 1e-5)
     Unew(1,:) = Uold(1,:) - dt*(dFdx(1,:) + H(1,:));
     Unew(2,:) = Uold(2,:) - dt*(dFdx(2,:) + H(2,:));
     Unew(3,:) = Uold(3,:) - dt*(dFdx(3,:) + H(3,:));
+    
     % Implicit for last
-    alpha = -dt*(k.*YO2)./rho;
-    beta = 1 + dt*k./rho;
-    Unew(4,:) = ((-dt*(dFdx(4,:) + H(4,:)) - alpha.*(Unew(1,:)-Uold(1,:)))./beta) + Uold(4,:);
+
+    % Calculate dH(4)/dU(1) numerically by applying small perturbation
+    % H = -wk = -k*YO2*A
+%     perturbation1 = (mean(rho.*A(x)))*(1e-4);
+%     perturbation4 = (mean(rho.*YO2.*A(x)))*(1e-4);
+%     H_U1_neg = -(k.*Uold(4,:).*A(x))./(Uold(1,:)-perturbation1);
+%     H_U1_pos = -(k.*Uold(4,:).*A(x))./(Uold(1,:)+perturbation1);
+%     H_U4_neg = -(k.*(Uold(4,:)-perturbation4).*A(x))./Uold(1,:);
+%     H_U4_pos = -(k.*(Uold(4,:)+perturbation4).*A(x))./Uold(1,:);
+%     dHdU1 = (H_U1_pos - H_U1_neg)/(2*perturbation1);
+%     dHdU4 = (H_U4_pos - H_U4_neg)/(2*perturbation4);
+
+    dHdU1 = k.*Uold(4,:).*A(x)./(Uold(1,:).^2);
+    dHdU4 = -k.*A(x)./Uold(1,:);
+    
+    % Find the stiff regions
+    tau_fl = dx./sqrt((T+T_inf).*(gammaO2*RO2*YO2 + RO*gammaO*YO));
+    tau_chem = abs(rho./k);
+    
+    idxStiff = find(tau_fl./tau_chem > 1);
+    
+    Unew(4,~idxStiff) = Uold(4,~idxStiff) - dt*(dFdx(4,~idxStiff) + H(4,~idxStiff));
+    Unew(4,idxStiff) = (-dt*(dFdx(4,idxStiff) + H(4,idxStiff)) - dt*dHdU1(idxStiff).*(Unew(1,idxStiff)-Uold(1,idxStiff)))./(1+dt*dHdU4(idxStiff)) + Uold(4,idxStiff);
     
     rho = Unew(1,:)./A(x);
     u = Unew(2,:)./(rho.*A(x));
@@ -144,7 +168,7 @@ while (diff > 1e-5)
     p = temp;
     M = u./sqrt(T.*(gammaO2*RO2*YO2 + RO*gammaO*YO));
    
-    plot(x/L,p/p_inf);
+    plot(x/L,M)
     pause(0.000001);
 end
 
