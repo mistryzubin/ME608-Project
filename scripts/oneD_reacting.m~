@@ -14,13 +14,14 @@ HfO                 = 1e5;
 % HfO                 = 0;
 L                   = 0.213;
 n_grid              = 129;
-CFL                 = 0.9;
+CFL                 = 0.0001;
 % Species source
-A                   = 2e6;
+A                   = 2e12;
 B                   = -1;
 C                   = 80;
 
 k_                  = @(T) A*T.^(-B).*exp(-C./T);
+% k_                  = @(T) (1e4)*T./T;
 
 wO2                 = 0.032;
 wO                  = 0.016;
@@ -34,6 +35,16 @@ cpO2                = cvO2*gammaO2;
 cvO                 = RO/(gammaO - 1);
 cpO                 = cvO*gammaO;
 
+% cpO2                = 1040;
+% cvO2                = 600;
+% cpO                 = 780;
+% cvO                 = 500;
+% 
+% gammaO2             = cpO2/cvO2;
+% gammaO              = cpO/cvO;
+% RO2                 = cpO2 - cvO2;
+% RO                  = cpO - cvO;
+
 rho_inf = (p_inf/(RO2*T_inf));
 u_inf = M_inf*sqrt(gammaO2*RO2*T_inf);
 %% Pre processing
@@ -43,7 +54,7 @@ x = (x(2:end)+x(1:end-1))/2;
 dx = x(2) - x(1);
 % Area distribution
 Amax = 1;
-Amin = 0.0325;
+Amin = 0.04;
 %A = @(x) Amin + (Amax - Amin)*(1 - sin(pi*x/L));
 A = @(x) (4*(Amax-Amin)*(x/L).*(x/L) - 4*(Amax-Amin)*(x/L) + Amax);
 
@@ -64,35 +75,35 @@ t = 0;
 
 while (diff > 1e-5)
     % Guess a value of dt based on intial velocity
-    dt = min((CFL*dx/max(u)),100);
-    t = t + dt;
+    dt = min((CFL*dx/max(abs(u))),100);
     T = T - T_inf;
     % Array of cvs
     cv = ones(1,length(YO)).*cv_(YO2,YO);
     cp = ones(1,length(YO)).*cp_(YO2,YO);
     k = k_(T+T_inf);
     
+%     dt = min(abs(rho./k));
+%     disp(dt);
+    t = t + dt;
+    
     dFdx = zeros(4,n_grid);
     
-    dFdx(1,2:end-1) = (rho(2:end-1).*u(2:end-1).*A(0.5*(x(2:end-1)+x(3:end))) - ...
-                      rho(1:end-2).*u(1:end-2).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
-    dFdx(1,1) = (rho(1)*u(1)*A((x(1)+x(2))*0.5) - rho_inf*u_inf*A(0))/dx;
-    dFdx(1,end) = (rho(end)*u(end)*A(L) - rho(end-1)*u(end-1)*A((x(end)+x(end-1))*0.5))/dx;
+    s1 = rho.*u;
+    s1_inf = rho_inf*u_inf;
     
-    dFdx(2,2:end-1) = ((rho(2:end-1).*u(2:end-1).*u(2:end-1) + p(2:end-1)).*A(0.5*(x(2:end-1)+x(3:end))) - ...
-                      (rho(1:end-2).*u(1:end-2).*u(1:end-2) + p(1:end-2)).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
-    dFdx(2,1) = ((rho(1)*u(1)*u(1) + p(1))*A(0.5*(x(1)+x(2))) - (rho_inf*u_inf*u_inf + p_inf)*A(0))/dx;
-    dFdx(2,end) = ((rho(end)*u(end)*u(end) + p(end))*A(L) - (rho(end-1)*u(end-1)*u(end-1) + p(end-1))*A(0.5*(x(end)+x(end-1))))/dx;
+    s2 = rho.*u.*u + p;
+    s2_inf = rho_inf*u_inf*u_inf + p_inf;
     
-    dFdx(3,2:end-1) = (rho(2:end-1).*u(2:end-1).*(cp(2:end-1).*T(2:end-1)+0.5*u(2:end-1).*u(2:end-1)+HfO*YO(2:end-1)+HfO2*YO2(2:end-1)).*A(0.5*(x(2:end-1)+x(3:end))) - ...
-                      rho(1:end-2).*u(1:end-2).*(cp(1:end-2).*T(1:end-2)+0.5*u(1:end-2).*u(1:end-2)+HfO*YO(1:end-2)+HfO2*YO2(1:end-2)).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
-    dFdx(3,1) = (rho(1)*u(1)*(cp(1)*T(1)+0.5*u(1)*u(1)+HfO*YO(1)+HfO2*YO2(1))*A(0.5*(x(1)+x(2))) - rho_inf*u_inf*(cv_(1,0)*(T_inf-T_inf)+0.5*u_inf*u_inf+HfO*0+HfO2*1)*A(0))/dx;
-    dFdx(3,end) = (rho(end)*u(end)*(cp(end)*T(end)+0.5*u(end)*u(end)+HfO*YO(end)+HfO2*YO2(end))*A(L) - rho(end-1)*u(end-1)*(cp(end-1)*T(end-1)+0.5*u(end-1)*u(end-1)+HfO*YO(end-1)+HfO2*YO2(end-1))*A(0.5*(x(end)+x(end-1))))/dx;
+    s3 = rho.*u.*(cp.*T + 0.5*u.*u);
+    s3_inf = rho_inf*u_inf*(cpO2*(T_inf-T_inf) + 0.5*u_inf*u_inf);
     
-    dFdx(4,2:end-1) = ((rho(2:end-1).*u(2:end-1).*YO2(2:end-1)).*A(0.5*(x(2:end-1)+x(3:end))) - ...
-                      (rho(1:end-2).*u(1:end-2).*YO2(1:end-2)).*A(0.5*(x(2:end-1)+x(1:end-2))))/dx;
-    dFdx(4,1) = (rho(1)*u(1)*YO2(1)*A((x(1)+x(2))*0.5) - rho_inf*u_inf*1*A(0))/dx;
-    dFdx(4,end) = (rho(end)*u(end)*YO2(end)*A(L) - rho(end-1)*u(end-1)*YO2(end-1)*A((x(end)+x(end-1))*0.5))/dx;
+    s4 = rho.*YO2.*u;
+    s4_inf = rho_inf*u_inf*1;
+    
+    dFdx(1,:) = upwindDifference(s1,x,L,dx,s1_inf,s1_inf,Amax,Amin);
+    dFdx(2,:) = upwindDifference(s2,x,L,dx,s2_inf,s2_inf,Amax,Amin);
+    dFdx(3,:) = upwindDifference(s3,x,L,dx,s3_inf,s3_inf,Amax,Amin);
+    dFdx(4,:) = upwindDifference(s4,x,L,dx,s4_inf,s4_inf,Amax,Amin);
     
     H = zeros(4,n_grid);
     H(2,2:end-1) = -p(2:end-1).*((A(0.5*(x(2:end-1)+x(3:end)))-A(0.5*(x(2:end-1)+x(1:end-2))))/dx);
@@ -108,7 +119,40 @@ while (diff > 1e-5)
     
     
     % Pure explicit
-    Unew = Uold - dt*(dFdx + H);
+%     Unew = Uold - dt*(dFdx + H);
+    
+    % Point implicit
+    Unew = 0*Uold;
+    % Explicit for first three
+    Unew(1,:) = Uold(1,:) - dt*(dFdx(1,:) + H(1,:));
+    Unew(2,:) = Uold(2,:) - dt*(dFdx(2,:) + H(2,:));
+    Unew(3,:) = Uold(3,:) - dt*(dFdx(3,:) + H(3,:));
+    
+    % Implicit for last
+
+    % Calculate dH(4)/dU(1) numerically by applying small perturbation
+    % H = -wk = -k*YO2*A
+%     perturbation1 = (mean(rho.*A(x)))*(1e-4);
+%     perturbation4 = (mean(rho.*YO2.*A(x)))*(1e-4);
+%     H_U1_neg = -(k.*Uold(4,:).*A(x))./(Uold(1,:)-perturbation1);
+%     H_U1_pos = -(k.*Uold(4,:).*A(x))./(Uold(1,:)+perturbation1);
+%     H_U4_neg = -(k.*(Uold(4,:)-perturbation4).*A(x))./Uold(1,:);
+%     H_U4_pos = -(k.*(Uold(4,:)+perturbation4).*A(x))./Uold(1,:);
+%     dHdU1 = (H_U1_pos - H_U1_neg)/(2*perturbation1);
+%     dHdU4 = (H_U4_pos - H_U4_neg)/(2*perturbation4);
+
+    dHdU1 = k.*Uold(4,:).*A(x)./(Uold(1,:).^2);
+    dHdU4 = -k.*A(x)./Uold(1,:);
+    
+    % Find the stiff regions
+    tau_fl = dx./sqrt((T+T_inf).*(gammaO2*RO2*YO2 + RO*gammaO*YO));
+    tau_chem = abs(rho./k);
+    
+    idxStiff = find(tau_fl./tau_chem > 1);
+    
+    Unew(4,~idxStiff) = Uold(4,~idxStiff) - dt*(dFdx(4,~idxStiff) + H(4,~idxStiff));
+    Unew(4,idxStiff) = (-dt*(dFdx(4,idxStiff) + H(4,idxStiff)) - dt*dHdU1(idxStiff).*(Unew(1,idxStiff)-Uold(1,idxStiff)))./(1+dt*dHdU4(idxStiff)) + Uold(4,idxStiff);
+    
     rho = Unew(1,:)./A(x);
     u = Unew(2,:)./(rho.*A(x));
     YO2 = Unew(4,:)./(rho.*A(x));
@@ -117,10 +161,6 @@ while (diff > 1e-5)
     T = (Unew(3,:)./(rho.*A(x)) - 0.5*u.*u - HfO2*YO2 - HfO*YO)./cv_(YO2,YO);
     T = T + T_inf;
     
-    % Point implicit
-    Unew = 0*Uold;
-    % Explicit for first thr
-    
     temp = ((rho).*(T).*(RO2*YO2 + RO*YO));
     diff = norm(p-temp);
     disp(diff);
@@ -128,7 +168,7 @@ while (diff > 1e-5)
     p = temp;
     M = u./sqrt(T.*(gammaO2*RO2*YO2 + RO*gammaO*YO));
    
-    plot(x/L,M);
-    pause(0.000001);
+%     plot(x/L,M)
+%     pause(0.000 001);
 end
 
