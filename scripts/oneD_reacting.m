@@ -13,7 +13,7 @@ HfO2                = 0;
 HfO                 = 1e5;
 % HfO                 = 0;
 L                   = 0.213;
-n_grid              = 129;
+n_grid              = 513;
 CFL                 = 0.9;
 % Species source
 A                   = 2e12;
@@ -54,7 +54,7 @@ x = (x(2:end)+x(1:end-1))/2;
 dx = x(2) - x(1);
 % Area distribution
 Amax = 1;
-Amin = 0.04;
+Amin = 0.05;
 %A = @(x) Amin + (Amax - Amin)*(1 - sin(pi*x/L));
 A = @(x) (4*(Amax-Amin)*(x/L).*(x/L) - 4*(Amax-Amin)*(x/L) + Amax);
 
@@ -136,20 +136,20 @@ while (diff > 1e-7)
     
     
     % Pure explicit
-%     Unew = Uold - dt*(dFdx + H);
+    Unew = Uold - dt*(dFdx + H);
     
-    % Point implicit
+%     Point implicit
     Unew = 0*Uold;
     % Explicit for first three
     Unew(1,:) = Uold(1,:) - dt*(dFdx(1,:) + H(1,:));
     Unew(2,:) = Uold(2,:) - dt*(dFdx(2,:) + H(2,:));
     Unew(3,:) = Uold(3,:) - dt*(dFdx(3,:) + H(3,:));
-%     Unew(4,:) = Uold(4,:) - dt*(dFdx(4,:) + H(4,:));
+    Unew(4,:) = Uold(4,:) - dt*(dFdx(4,:) + H(4,:));
     
     % Implicit for last
 %     dHdU1 = -k.*Uold(4,:).*A(x)./(Uold(1,:).^2);
-    dHdU1 = zeros(1,length(k));
-    dHdU4 = k.*A(x)./Uold(1,:);
+%     dHdU1 = zeros(1,length(k));
+%     dHdU4 = k.*A(x)./Uold(1,:);
     
     
 %     idxStiff = (tau_fl./tau_chem > CFL);
@@ -157,7 +157,7 @@ while (diff > 1e-7)
 %     Unew(4,~idxStiff) = Uold(4,~idxStiff) - dt*(dFdx(4,~idxStiff) + H(4,~idxStiff));
 %     Unew(4,idxStiff) = (-dt*(dFdx(4,idxStiff) + H(4,idxStiff)) - dt*dHdU1(idxStiff).*(Unew(1,idxStiff)-Uold(1,idxStiff)))./(1+dt*dHdU4(idxStiff)) + Uold(4,idxStiff);
 
-    Unew(4,:) = (-dt*(dFdx(4,:) + H(4,:)) - dt*dHdU1.*(Unew(1,:)-Uold(1,:)))./(1+dt*dHdU4) + Uold(4,:);
+%     Unew(4,:) = (-dt*(dFdx(4,:) + H(4,:)) - dt*dHdU1.*(Unew(1,:)-Uold(1,:)))./(1+dt*dHdU4) + Uold(4,:);
     
     rho = Unew(1,:)./A(x);
     u = Unew(2,:)./(rho.*A(x));

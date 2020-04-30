@@ -17,8 +17,8 @@ cp_O                = 718;              % J/kgK
 cv_O2               = cp_O2/gamma;
 cv_O                = cp_O/gamma;
 L                   = 0.213;            % m
-CFL                 = 0.1;
-n_grid_array        = [33 65 129 257 513 1025];
+CFL                 = 0.9;
+n_grid_array        = [33 65 129 257 ];
 
 for n_grid_iter = 1:length(n_grid_array)
     n_grid              = n_grid_array(n_grid_iter);     
@@ -54,7 +54,7 @@ for n_grid_iter = 1:length(n_grid_array)
     diff = 1;
     t = 0;
     iter = 0;
-    iterMax = 1e5;
+    iterMax = 1e4;
     while (diff > 1e-8)
         iter = iter+1;
         if (iter>iterMax) 
