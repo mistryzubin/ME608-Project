@@ -8,7 +8,7 @@ clc;
 %% Properties - Table 6-1
 p_inf               = 6.6e4;            
 T_inf               = 1200;             
-M_inf               = 6;              
+M_inf               = 20;              
 HfO2                = 0;
 HfO                 = 1e5;
 % HfO                 = 0;
@@ -181,8 +181,8 @@ while (diff > 1e-7)
         hold on
         title(['t = ' num2str(t)])
 %         plot(x/L,T/T_inf);
-%         plot(x/L,YO2)
-        plot(x/L,M)
+        
+        plot(x/L,YO2)
         pause(1e-12);
         clf;
     end

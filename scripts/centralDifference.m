@@ -1,8 +1,5 @@
-function ddx = centralDifference(s,x,L,dx,s_w,s_e)
+function ddx = centralDifference(s,x,L,dx,s_w,s_e,Amax,Amin)
 
-Amax = 1;
-Amin = 0.03;
-%A = @(x) Amin + (Amax - Amin)*(1 - sin(pi*x/L));
 A = @(x) (4*(Amax-Amin)*(x/L).*(x/L) - 4*(Amax-Amin)*(x/L) + Amax);
 
 ddx = zeros(1,length(s));

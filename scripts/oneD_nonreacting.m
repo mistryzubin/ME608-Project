@@ -99,11 +99,11 @@ while (diff > 1e-5)
     p = temp;
     M = u./sqrt(gamma*(R/0.032)*T);
     
-%     plot(x/L,M);
-%     pause(0.1);
+    plot(x/L,M);
+    pause(1e-12);
 end
 
-% load('../../machnumber.mat');
+load('./matlab.mat');
 figure();
 hold on;
 grid on;
@@ -117,7 +117,7 @@ legend('show');
 set(gca,'FontSize',20);
 set(gcf,'color','w');
 
-% load('../../temperature.mat');
+load('./matlab.mat');
 figure();
 hold on;
 grid on;
